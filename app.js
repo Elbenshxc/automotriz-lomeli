@@ -1,39 +1,49 @@
-const $=s=>document.querySelector(s), key='lomeli-inventory-v1';
-const seed=[{id:'cupra',name:'Cupra Formentor 2.0 VZ',year:2023,km:28000,price:595000,photo:'assets/cupra.webp',state:'Disponible',description:'Vehículo de ejemplo de la propuesta visual. Consulta la versión, equipamiento y disponibilidad.'},{id:'audi',name:'Audi Q5 Sportback',year:2022,km:94000,price:589000,photo:'assets/audi.webp',state:'Disponible',description:'Vehículo de ejemplo de la propuesta visual. Consulta los datos vigentes con un asesor.'},{id:'tacoma',name:'Toyota Tacoma TRD Sport 4×4',year:2020,km:90000,price:595000,photo:'assets/tacoma.webp',state:'Disponible',description:'Vehículo de ejemplo de la propuesta visual. Consulta los datos vigentes con un asesor.'}];
-let cars=structuredClone(seed),signed=false;
-try{let saved=JSON.parse(localStorage.getItem(key));if(Array.isArray(saved)&&saved.every(c=>c.id&&c.name&&typeof c.price==='number'))cars=saved}catch{}
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money=n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}).format(n);
-const photo=c=>/^(assets\/|data:image\/(jpeg|png|webp);base64,)/.test(c.photo||'')?c.photo:'assets/hero.webp';
-const wa=m=>'https://wa.me/524499078817?text='+encodeURIComponent(m);
-document.querySelectorAll('.wa').forEach(a=>{a.href=wa(a.dataset.message);a.target='_blank';a.rel='noopener'});
-function render(){let list=cars.filter(c=>c.state!=='Oculto'&&c.name.toLowerCase().includes($('#search').value.toLowerCase())&&(!$('#status').value||c.state===$('#status').value));$('#cars').innerHTML=list.map(c=>`<article class="car"><img src="${esc(photo(c))}" alt="${esc(c.name)}" loading="lazy"><div class="carBody"><span class="tag">Ejemplo · ${esc(c.state)}</span><h3>${esc(c.name)}</h3><p class="carMeta">${c.year} &nbsp; | &nbsp; ${Number(c.km).toLocaleString('es-MX')} km</p><div class="carBottom"><span class="price">${money(c.price)}</span><button data-detail="${esc(c.id)}" aria-label="Ver ${esc(c.name)}">Ver auto</button></div></div></article>`).join('');$('#empty').hidden=!!list.length;$('#adminList').innerHTML=cars.map(c=>`<div class="adminRow"><div><strong>${esc(c.name)}</strong><br><span class="subtle">${money(c.price)} · ${esc(c.state)}</span></div><div class="actions"><button data-edit="${esc(c.id)}">Editar</button><button data-state="${esc(c.id)}">${c.state==='Vendido'?'Disponible':'Vendido'}</button><button data-hide="${esc(c.id)}">${c.state==='Oculto'?'Mostrar':'Ocultar'}</button><button data-delete="${esc(c.id)}">Eliminar</button></div></div>`).join('')}
-function persist(next){try{localStorage.setItem(key,JSON.stringify(next));cars=next;render();return true}catch{alert('No se pudieron guardar los cambios. El almacenamiento del navegador está lleno o no está disponible.');return false}}
-$('#search').addEventListener('input',render);$('#status').addEventListener('change',render);
-$('#menu').onclick=()=>{let open=$('#nav').classList.toggle('open');$('#menu').setAttribute('aria-expanded',open)};
-$('#nav').addEventListener('click',e=>{if(e.target.closest('a')){$('#nav').classList.remove('open');$('#menu').setAttribute('aria-expanded','false')}});
-document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$('#'+b.dataset.close).close());
-$('#adminOpen').onclick=()=>$(signed?'#panel':'#login').showModal();
-$('#loginForm').onsubmit=e=>{e.preventDefault();let f=new FormData(e.target);if(f.get('usuario').trim().toLowerCase()==='admin lomeli'&&f.get('password')==='Lomeli2026'){signed=true;$('#login').close();e.target.reset();$('#loginError').textContent='';$('#panel').showModal()}else $('#loginError').textContent='Usuario o contraseña incorrectos.'};
-$('#logout').onclick=()=>{signed=false;$('#panel').close();$('#editForm').hidden=true};
-$('#quote').onsubmit=e=>{e.preventDefault();let d=new FormData(e.target),m=`Hola, soy ${d.get('nombre')}. Busco un vehículo.\nMarca: ${d.get('marca')||'Por definir'}\nModelo: ${d.get('modelo')||'Por definir'}\nAño: ${d.get('anio')||'Por definir'}\nPresupuesto: ${d.get('presupuesto')?money(Number(d.get('presupuesto'))):'Por definir'}\n${d.get('comentarios')||''}`;window.open(wa(m),'_blank','noopener')};
-function edit(id){if(!signed)return;let f=$('#editForm');f.reset();$('#saveError').textContent='';let c=cars.find(x=>x.id===id);f.hidden=false;$('#editTitle').textContent=c?'Editar vehículo':'Agregar vehículo';for(let name of ['id','name','year','km','price','state','description'])f.elements[name].value=c?.[name]??(name==='state'?'Disponible':'');f.scrollIntoView({behavior:'smooth',block:'start'})}
-$('#newCar').onclick=()=>edit();$('#cancelEdit').onclick=()=>$('#editForm').hidden=true;
-$('#restore').onclick=()=>{if(signed&&confirm('¿Restaurar los ejemplos? Se perderán los cambios locales.')){persist(structuredClone(seed));$('#editForm').hidden=true}};
-$('#adminList').onclick=e=>{if(!signed)return;let b=e.target.closest('button');if(!b)return;let id=b.dataset.edit||b.dataset.state||b.dataset.hide||b.dataset.delete,c=cars.find(x=>x.id===id);if(!c)return;if(b.dataset.edit)return edit(id);if(b.dataset.delete){if(confirm('¿Eliminar '+c.name+'?'))persist(cars.filter(x=>x.id!==id))}else persist(cars.map(x=>x.id!==id?x:{...x,state:b.dataset.hide?(c.state==='Oculto'?'Disponible':'Oculto'):(c.state==='Vendido'?'Disponible':'Vendido')}))};
-$('#editForm').onsubmit=async e=>{e.preventDefault();if(!signed)return;const f=e.target,d=new FormData(f),id=d.get('id')||crypto.randomUUID(),old=cars.find(c=>c.id===id);let img=old?.photo||'assets/hero.webp',file=f.elements.photo.files[0];if(file){if(file.size>2*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type)){$('#saveError').textContent='Selecciona una imagen JPG, PNG o WebP de hasta 2 MB.';return}try{img=await new Promise((resolve,reject)=>{let r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}catch{$('#saveError').textContent='No se pudo leer la imagen.';return}}let c={id,name:d.get('name').trim(),year:Number(d.get('year')),km:Number(d.get('km')),price:Number(d.get('price')),state:d.get('state'),description:d.get('description'),photo:img};if(persist(old?cars.map(x=>x.id===id?c:x):[...cars,c]))f.hidden=true};
-$('#cars').onclick=e=>{let b=e.target.closest('[data-detail]');if(!b)return;let c=cars.find(x=>x.id===b.dataset.detail);$('#detailContent').innerHTML=`<img src="${esc(photo(c))}" alt="${esc(c.name)}"><p class="eyebrow">VEHÍCULO DE EJEMPLO · ${esc(c.state)}</p><h2>${esc(c.name)}</h2><p>${c.year} · ${Number(c.km).toLocaleString('es-MX')} km</p><p class="price">${money(c.price)}</p><p>${esc(c.description)}</p><a class="btn" target="_blank" rel="noopener" href="${esc(wa('Hola, quiero consultar disponibilidad e información de '+c.name))}">Consultar por WhatsApp</a>`;$('#details').showModal()};render();
+/* Página de inicio: tendencia, carrocerías, marcas, kit, recomendados, calculadora, reseñas, FAQ, sucursales y blog. */
+(() => {
+  const {$, $$, esc, money, D} = L;
+  let term = 60;
+  function draw() {
+    const list = L.publicCars();
+    const newest = [...list].sort((a, b) => String(b.added).localeCompare(String(a.added)));
+    const trend = [...list.filter(c => (c.tags || []).includes('demanda')), ...newest.filter(c => !(c.tags || []).includes('demanda'))].slice(0, 8);
+    $('#trend').innerHTML = trend.map(L.card).join('');
+    $('#recommended').innerHTML = newest.filter(c => !trend.includes(c)).slice(0, 6).map(L.card).join('');
+    $('#cardsLegal').innerHTML = L.cardsLegal();
+    $('#totalCars').textContent = list.length;
+    $('#types').innerHTML = D.types.map(t => { const n = list.filter(c => c.tipo === t).length; const ph = L.typePhoto(t); return `<a class="${ph ? 'photo' : ''}" href="inventario.html?tipo=${encodeURIComponent(t)}">${ph ? `<img src="${ph}" alt="" loading="lazy">` : L.typeSVG(t)}<strong>${t === 'Sedán' ? 'Sedanes' : t === 'Pick Up' ? 'Pick Ups' : t + 's'}</strong><span>${n} ${n === 1 ? 'auto' : 'autos'}</span></a>` }).join('');
+    const brands = {}; list.forEach(c => brands[c.marca] = (brands[c.marca] || 0) + 1);
+    $('#brands').innerHTML = Object.entries(brands).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([b, n]) => `<a href="inventario.html?marca=${encodeURIComponent(b)}">${L.logo(b, 'big')}<strong>${esc(b)}</strong><small>${n} ${n === 1 ? 'auto' : 'autos'}</small></a>`).join('');
+    calculator(); L.syncFavs();
+  }
+  $('#kit').innerHTML = L.kitHTML();
+  $('#reviews').innerHTML = L.reviewsHTML(6);
+  $('#faqList').innerHTML = L.faqHTML(D.faq);
+  $('#branchList').innerHTML = L.branchesHTML();
+  $('#blogGrid').innerHTML = D.blog.map(b => `<button type="button" class="blogCard" data-article="${b.id}"><span class="blogArt" aria-hidden="true"></span><span class="tag">${esc(b.tag)} · Ejemplo</span><h3>${esc(b.title)}</h3><small>Lectura de ${b.minutes} min</small></button>`).join('');
+  $('#blogGrid').onclick = e => { const b = e.target.closest('[data-article]'); if (!b) return; const a = D.blog.find(x => x.id === b.dataset.article); $('#articleBody').innerHTML = `<p class="eyebrow">${esc(a.tag.toUpperCase())} · NOTA DE EJEMPLO</p><h2>${esc(a.title)}</h2>${a.body.map(p => `<p>${esc(p)}</p>`).join('')}<div class="actions"><a class="btn" href="inventario.html">Ver autos</a><a class="btn ghost" href="credito.html">Calcular crédito</a></div>`; $('#article').showModal() };
+  $('[data-close-article]').onclick = () => $('#article').close();
 
-// Entrance effects remain optional for visitors who prefer reduced motion.
-if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
- document.querySelectorAll('main > section:not(.hero), .trust, footer').forEach(el=>el.classList.add('reveal'));
- const observer=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('visible');observer.unobserve(entry.target)}})},{threshold:0.06});
- document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
-}
+  /* Calculadora de la sección Financiamiento (misma fórmula de finance.js) */
+  function calculator() { const list = L.publicCars().filter(c => L.plan(c).bank), sel = $('#financeCar'), old = sel.value; sel.innerHTML = list.map(c => `<option value="${esc(c.id)}">${esc(L.fullName(c))} · ${money(c.price)}</option>`).join(''); if (list.some(c => c.id === old)) sel.value = old; $('#startRequest').disabled = !list.length; update() }
+  function update() { const c = L.find($('#financeCar').value), pct = Number($('#downPayment').value), v = c ? L.quote(c, pct, term) : null; $('#financePrice').textContent = c ? money(c.price) : 'Sin vehículos disponibles'; $('#downAmount').textContent = v ? money(v.down) : '—'; $('#downPercent').textContent = pct + '%'; $('#monthlyPayment').textContent = v ? money(v.payment) : '—'; $('#termCaption').textContent = 'a ' + term + ' meses'; $('#downPayment').setAttribute('aria-valuetext', (v ? money(v.down) : '') + ' de enganche') }
+  $('#financeCar').onchange = update; $('#downPayment').oninput = update;
+  $('#termBtns').innerHTML = L.BANK_TERMS.map(m => `<button type="button" data-months="${m}" aria-pressed="${m === term}">${m} meses</button>`).join('');
+  $$('[data-months]').forEach(b => b.onclick = () => { term = Number(b.dataset.months); $$('[data-months]').forEach(t => t.setAttribute('aria-pressed', String(t === b))); update() });
+  $$('[data-term]').forEach(p => p.textContent = D.terms[p.dataset.term]);
+  $('#startRequest').onclick = () => LomeliPortal.begin({carId: $('#financeCar').value, percent: Number($('#downPayment').value), months: term});
+  $('#resumeRequest').onclick = () => LomeliPortal.draft() ? LomeliPortal.begin({resume: true}) : location.href = 'cuenta.html#solicitud';
+  $$('[data-legal]').forEach(p => p.textContent = L.LEGAL);
 
-const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
-if (!reducedMotion.matches && matchMedia('(hover: hover) and (pointer: fine)').matches) {
- const visual=document.querySelector('.heroVisual');
- visual.addEventListener('pointermove',e=>{const r=visual.getBoundingClientRect();visual.style.setProperty('--tilt-x',((e.clientY-r.top)/r.height-.5)*-3+'deg');visual.style.setProperty('--tilt-y',((e.clientX-r.left)/r.width-.5)*4+'deg')});
- visual.addEventListener('pointerleave',()=>{visual.style.setProperty('--tilt-x','0deg');visual.style.setProperty('--tilt-y','0deg')});
-}
+  /* Formulario de cotización por WhatsApp */
+  $('#quote').onsubmit = e => { e.preventDefault(); const d = new FormData(e.target), m = `Hola, soy ${d.get('nombre')}. Busco un vehículo.\nMarca: ${d.get('marca') || 'Por definir'}\nModelo: ${d.get('modelo') || 'Por definir'}\nAño: ${d.get('anio') || 'Por definir'}\nPresupuesto: ${d.get('presupuesto') ? money(Number(d.get('presupuesto'))) : 'Por definir'}\n${d.get('comentarios') || ''}`; window.open(L.wa(m), '_blank', 'noopener') };
+
+  document.addEventListener('lomeli:inventory', draw);
+  draw();
+
+  /* Movimiento sutil de la imagen principal */
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    const visual = $('.heroVisual');
+    visual.addEventListener('pointermove', e => { const r = visual.getBoundingClientRect(); visual.style.setProperty('--tilt-x', ((e.clientY - r.top) / r.height - .5) * -3 + 'deg'); visual.style.setProperty('--tilt-y', ((e.clientX - r.left) / r.width - .5) * 4 + 'deg') });
+    visual.addEventListener('pointerleave', () => { visual.style.setProperty('--tilt-x', '0deg'); visual.style.setProperty('--tilt-y', '0deg') });
+  }
+})();
