@@ -49,7 +49,7 @@ window.L = (() => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400"><rect width="640" height="400" fill="#eef0f3"/><text x="320" y="225" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="64" font-weight="900" fill="#9aa1ab">${esc(String(c.marca || '').toUpperCase())}</text></svg>`;
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
-  const okPhoto = p => /^(assets\/(catalogo\/)?[\w.-]+\.(webp|png|jpe?g)|data:image\/(jpeg|png|webp);base64,)/.test(p || '');
+  const okPhoto = p => /^((?:assets\/(catalogo\/)?)?[\w.-]+\.(webp|png|jpe?g)|data:image\/(jpeg|png|webp);base64,)/.test(p || '');
   function photos(c) {
     const real = (c.photos || []).filter(okPhoto).map(src => ({src, real: true}));
     return real.length ? real : [{src: placeholder(c), real: false}];
